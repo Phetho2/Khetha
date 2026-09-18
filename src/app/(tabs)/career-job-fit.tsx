@@ -1,24 +1,24 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AssessmentChapterIntro } from '@/components/ncap/assessment-chapter-intro';
+import { AssessmentChapterProgress } from '@/components/ncap/assessment-chapter-progress';
 import { AssessmentFooterNote } from '@/components/ncap/assessment-footer-note';
-import { AssessmentProgress } from '@/components/ncap/assessment-progress';
 import { AssessmentQuestionCard } from '@/components/ncap/assessment-question-card';
 import { AssessmentRatingScale } from '@/components/ncap/assessment-rating-scale';
 import { AssessmentResultCard } from '@/components/ncap/assessment-result-card';
-import { AssessmentSectionBar } from '@/components/ncap/assessment-section-bar';
 import { ScreenHeader } from '@/components/ncap/screen-header';
 import { ScreenLoading } from '@/components/ncap/screen-loading';
 import { TopNavBar } from '@/components/ncap/top-nav-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { AssessmentResult, HollandCodeQuestion, RIASEC_LABELS } from '@/data/assessment-questions';
 import { useAuth } from '@/contexts/auth-context';
+import { AssessmentResult, HollandCodeQuestion, RIASEC_META } from '@/data/assessment-questions';
 import { JOURNEY_STEP } from '@/data/journey';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
@@ -27,11 +27,30 @@ import { RoadmapService } from '@/services/roadmap-service';
 
 const AUTO_ADVANCE_DELAY_MS = 400;
 
+type Chapter = {
+  type: number;
+  questions: HollandCodeQuestion[];
+};
+
+function groupIntoChapters(questions: HollandCodeQuestion[]): Chapter[] {
+  const byType = new Map<number, HollandCodeQuestion[]>();
+  for (const question of questions) {
+    const list = byType.get(question.type) ?? [];
+    list.push(question);
+    byType.set(question.type, list);
+  }
+  return Array.from(byType.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([type, list]) => ({ type, questions: list }));
+}
+
 export default function CareerJobFitScreen() {
   const theme = useTheme();
   const { learner } = useAuth();
   const [questions, setQuestions] = useState<HollandCodeQuestion[] | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [chapterIndex, setChapterIndex] = useState(0);
+  const [questionIndexInChapter, setQuestionIndexInChapter] = useState(0);
+  const [showChapterIntro, setShowChapterIntro] = useState(true);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,6 +58,8 @@ export default function CareerJobFitScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const advanceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const chapters = useMemo(() => (questions ? groupIntoChapters(questions) : []), [questions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +93,9 @@ export default function CareerJobFitScreen() {
 
   function handleRetake() {
     clearPendingAdvance();
-    setCurrentIndex(0);
+    setChapterIndex(0);
+    setQuestionIndexInChapter(0);
+    setShowChapterIntro(true);
     setAnswers({});
     setResult(null);
     setSubmitError(null);
@@ -97,7 +120,12 @@ export default function CareerJobFitScreen() {
       .finally(() => setIsSubmitting(false));
   }
 
-  function handleRate(questionId: number, rating: number, isLastQuestion: boolean, total: number) {
+  function handleRate(
+    questionId: number,
+    rating: number,
+    isLastQuestionInChapter: boolean,
+    isLastChapter: boolean,
+  ) {
     Haptics.selectionAsync();
     const updatedAnswers = { ...answers, [questionId]: rating };
     setAnswers(updatedAnswers);
@@ -105,17 +133,28 @@ export default function CareerJobFitScreen() {
     clearPendingAdvance();
     advanceTimeout.current = setTimeout(() => {
       advanceTimeout.current = null;
-      if (isLastQuestion) {
+      if (isLastQuestionInChapter && isLastChapter) {
         submitAnswers(updatedAnswers);
+      } else if (isLastQuestionInChapter) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setChapterIndex((index) => index + 1);
+        setQuestionIndexInChapter(0);
+        setShowChapterIntro(true);
       } else {
-        setCurrentIndex((index) => Math.min(total - 1, index + 1));
+        setQuestionIndexInChapter((index) => index + 1);
       }
     }, AUTO_ADVANCE_DELAY_MS);
   }
 
   function goToPrevious() {
     clearPendingAdvance();
-    setCurrentIndex((index) => Math.max(0, index - 1));
+    if (questionIndexInChapter > 0) {
+      setQuestionIndexInChapter((index) => index - 1);
+    } else if (chapterIndex > 0) {
+      const previousChapter = chapters[chapterIndex - 1];
+      setChapterIndex((index) => index - 1);
+      setQuestionIndexInChapter(previousChapter.questions.length - 1);
+    }
   }
 
   if (loadError) {
@@ -145,7 +184,7 @@ export default function CareerJobFitScreen() {
     );
   }
 
-  if (!questions) {
+  if (!questions || chapters.length === 0) {
     return (
       <ThemedView style={styles.root}>
         <SafeAreaView style={styles.centeredColumn} edges={['top']}>
@@ -156,10 +195,12 @@ export default function CareerJobFitScreen() {
     );
   }
 
-  const question = questions[currentIndex];
-  const isLastQuestion = currentIndex === questions.length - 1;
-  const currentRating = answers[question.id] ?? null;
-  const minutesRemaining = Math.max(1, Math.ceil(((questions.length - currentIndex) * 8) / 60));
+  const currentChapter = chapters[chapterIndex];
+  const currentQuestion = currentChapter.questions[questionIndexInChapter];
+  const isLastQuestionInChapter = questionIndexInChapter === currentChapter.questions.length - 1;
+  const isLastChapter = chapterIndex === chapters.length - 1;
+  const currentRating = answers[currentQuestion.id] ?? null;
+  const canGoBack = chapterIndex > 0 || questionIndexInChapter > 0;
 
   return (
     <ThemedView style={styles.root}>
@@ -169,10 +210,9 @@ export default function CareerJobFitScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          <ScreenHeader title="Career Job Fit" subtitle="Discover careers that match your strengths" />
-
           {result ? (
             <>
+              <ScreenHeader title="Career Job Fit" subtitle="Discover careers that match your strengths" />
               <AssessmentResultCard result={result} />
               <Pressable
                 onPress={handleRetake}
@@ -184,25 +224,34 @@ export default function CareerJobFitScreen() {
                 <MaterialIcons name="replay" size={18} color={theme.onSurface} />
                 <ThemedText type="smallBold">Retake Assessment</ThemedText>
               </Pressable>
+              <AssessmentFooterNote />
             </>
           ) : isSubmitting ? (
             <ScreenLoading label="Calculating your results..." />
+          ) : showChapterIntro ? (
+            <AssessmentChapterIntro
+              chapterNumber={chapterIndex + 1}
+              totalChapters={chapters.length}
+              meta={RIASEC_META[currentChapter.type]}
+              questionCount={currentChapter.questions.length}
+              isFirst={chapterIndex === 0}
+              onStart={() => setShowChapterIntro(false)}
+            />
           ) : (
             <>
-              <AssessmentProgress
-                questionNumber={currentIndex + 1}
-                totalQuestions={questions.length}
-                minutesRemaining={minutesRemaining}
-              />
+              <AssessmentChapterProgress chapters={chapters} answers={answers} currentChapterIndex={chapterIndex} />
 
-              <Animated.View key={question.id} entering={FadeIn.duration(200)} style={styles.questionGroup}>
-                <AssessmentSectionBar sectionLabel={`${RIASEC_LABELS[question.type]} Questions`} />
-
-                <AssessmentQuestionCard categoryEyebrow={RIASEC_LABELS[question.type]} questionText={question.text} />
+              <Animated.View key={currentQuestion.id} entering={SlideInRight.duration(220)} style={styles.questionGroup}>
+                <AssessmentQuestionCard
+                  categoryEyebrow={RIASEC_META[currentChapter.type].label}
+                  questionText={currentQuestion.text}
+                />
 
                 <AssessmentRatingScale
                   value={currentRating}
-                  onChange={(rating) => handleRate(question.id, rating, isLastQuestion, questions.length)}
+                  onChange={(rating) =>
+                    handleRate(currentQuestion.id, rating, isLastQuestionInChapter, isLastChapter)
+                  }
                 />
               </Animated.View>
 
@@ -212,7 +261,7 @@ export default function CareerJobFitScreen() {
                 </ThemedText>
               )}
 
-              {currentIndex > 0 && (
+              {canGoBack && (
                 <Pressable
                   onPress={goToPrevious}
                   style={({ pressed }) => [
@@ -226,8 +275,6 @@ export default function CareerJobFitScreen() {
               )}
             </>
           )}
-
-          <AssessmentFooterNote />
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
