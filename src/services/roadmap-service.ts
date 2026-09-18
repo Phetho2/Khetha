@@ -2,6 +2,7 @@ import { JOURNEY_STEP_META, RoadmapStatus, RoadmapStep } from '@/data/career-roa
 import { JourneyProgressResponse } from '@/data/journey';
 
 import { apiClient } from './api-client';
+import { withCache } from './cache';
 
 export type Roadmap = {
   steps: RoadmapStep[];
@@ -46,9 +47,12 @@ function toRoadmap(response: JourneyProgressResponse): Roadmap {
 }
 
 export const RoadmapService = {
-  // GET /api/Journey/progress
-  getRoadmap(): Promise<Roadmap> {
-    return apiClient.get<JourneyProgressResponse>('/Journey/progress').then(toRoadmap);
+  // GET /api/Journey/progress — cached per learner so your last-known progress
+  // still shows offline instead of an error.
+  getRoadmap(learnerId: string): Promise<Roadmap> {
+    return withCache(`journey_progress_${learnerId}`, () =>
+      apiClient.get<JourneyProgressResponse>('/Journey/progress'),
+    ).then(toRoadmap);
   },
 
   // POST /api/Journey/progress/{step}/complete

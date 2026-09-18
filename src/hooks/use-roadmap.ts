@@ -13,7 +13,7 @@ export function useRoadmap() {
   useEffect(() => {
     if (!learner) return;
     let cancelled = false;
-    RoadmapService.getRoadmap()
+    RoadmapService.getRoadmap(learner.id)
       .then((result) => {
         if (!cancelled) {
           setRoadmap(result);
