@@ -3,22 +3,25 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { AuthProvider } from '@/contexts/auth-context';
+import { OnboardingProvider } from '@/context/onboarding-context';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
+      <OnboardingProvider>
         <AnimatedSplashOverlay />
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="home" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="career-detail" options={{ presentation: 'card' }} />
-          <Stack.Screen name="account" options={{ presentation: 'modal' }} />
         </Stack>
-      </AuthProvider>
+      </OnboardingProvider>
     </ThemeProvider>
   );
 }
