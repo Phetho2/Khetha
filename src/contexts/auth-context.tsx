@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
-import { AuthResponse, LearnerProfile, LoginRequest, RegisterRequest } from '@/data/auth';
+import { AuthResponse, LearnerProfile, LoginRequest, RegisterRequest, UpdateLearnerProfileRequest } from '@/data/auth';
 import { setAuthToken } from '@/services/api-client';
 import { AuthService } from '@/services/auth-service';
 import { AuthStorage } from '@/services/auth-storage';
@@ -11,6 +11,7 @@ type AuthContextValue = {
   login: (payload: LoginRequest) => Promise<void>;
   register: (payload: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (payload: UpdateLearnerProfileRequest) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,8 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLearner(null);
   }
 
+  async function updateProfile(payload: UpdateLearnerProfileRequest) {
+    const profile = await AuthService.updateProfile(payload);
+    setLearner(profile);
+  }
+
   return (
-    <AuthContext.Provider value={{ learner, isLoading, login, register, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ learner, isLoading, login, register, logout, updateProfile }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

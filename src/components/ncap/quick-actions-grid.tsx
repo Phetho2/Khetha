@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -73,8 +73,11 @@ export function QuickActionsGrid() {
         {ACTIONS.map((action) => (
           <Pressable
             key={action.id}
-            disabled={!action.href}
-            onPress={() => action.href && router.push(action.href)}
+            onPress={() =>
+              action.href
+                ? router.push(action.href)
+                : Alert.alert('Coming Soon', "We're still building this part of Khetha.")
+            }
             style={({ pressed }) => [
               styles.tile,
               { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.cardBorder },

@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, ThemeColor } from '@/constants/theme';
@@ -9,9 +9,10 @@ import { useTheme } from '@/hooks/use-theme';
 type RoadmapStepRowProps = {
   step: RoadmapStep;
   isLast: boolean;
+  onPress?: () => void;
 };
 
-export function RoadmapStepRow({ step, isLast }: RoadmapStepRowProps) {
+export function RoadmapStepRow({ step, isLast, onPress }: RoadmapStepRowProps) {
   const theme = useTheme();
 
   const circleBackground: ThemeColor =
@@ -39,15 +40,25 @@ export function RoadmapStepRow({ step, isLast }: RoadmapStepRowProps) {
         {!isLast && <View style={[styles.connector, { backgroundColor: theme[connectorColor] }]} />}
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme[cardBackground] }]}>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        style={({ pressed }) => [
+          styles.card,
+          { backgroundColor: theme[cardBackground] },
+          pressed && onPress && styles.pressed,
+        ]}>
         <View style={styles.cardHeader}>
           <ThemedText type="smallBold" themeColor={titleColor} style={styles.cardTitle}>
             {step.title}
           </ThemedText>
-          <View style={[styles.badge, { backgroundColor: theme[badgeBackground] }]}>
-            <ThemedText type="small" themeColor={badgeColor} style={styles.badgeLabel}>
-              {step.badgeLabel}
-            </ThemedText>
+          <View style={styles.cardHeaderEnd}>
+            <View style={[styles.badge, { backgroundColor: theme[badgeBackground] }]}>
+              <ThemedText type="small" themeColor={badgeColor} style={styles.badgeLabel}>
+                {step.badgeLabel}
+              </ThemedText>
+            </View>
+            {onPress && <MaterialIcons name="chevron-right" size={18} color={theme.onSurfaceVariant} />}
           </View>
         </View>
         <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.description}>
@@ -66,7 +77,7 @@ export function RoadmapStepRow({ step, isLast }: RoadmapStepRowProps) {
             ))}
           </View>
         )}
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -106,6 +117,14 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flexShrink: 1,
+  },
+  cardHeaderEnd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   badge: {
     paddingHorizontal: Spacing.two,

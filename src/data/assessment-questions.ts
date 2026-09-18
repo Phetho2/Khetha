@@ -28,3 +28,15 @@ export type AssessmentResult = {
   resultCode: string | null;
   persisted: boolean;
 };
+
+export type AssessmentSubmissionSummary = {
+  id: string;
+  submittedAtUtc: string;
+  realisticScore: number;
+  investigativeScore: number;
+  artisticScore: number;
+  socialScore: number;
+  enterprisingScore: number;
+  conventionalScore: number;
+  resultCode: string | null;
+};

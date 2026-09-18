@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,8 +14,51 @@ import { TopNavBar } from '@/components/ncap/top-nav-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
+import { useRoadmap } from '@/hooks/use-roadmap';
+import { navigateToJourneyStep } from '@/utils/journey-step-navigation';
 
 export default function HomeScreen() {
+  const { learner } = useAuth();
+  const { roadmap, roadmapError, retryRoadmap } = useRoadmap();
+
+  const primaryAction = !learner
+    ? {
+        stepLabel: 'Get Started',
+        title: 'Sign in to track your journey',
+        progressLabel: '0% Complete',
+        progressPercent: 0,
+        ctaLabel: 'Sign In / Register',
+        onPress: () => router.push('/account'),
+      }
+    : roadmapError
+      ? {
+          stepLabel: 'Journey',
+          title: roadmapError,
+          progressLabel: '—',
+          progressPercent: 0,
+          ctaLabel: 'Retry',
+          onPress: retryRoadmap,
+        }
+      : !roadmap
+        ? {
+            stepLabel: 'Journey',
+            title: 'Loading your journey...',
+            progressLabel: '—',
+            progressPercent: 0,
+            ctaLabel: 'Please wait',
+            onPress: () => {},
+          }
+        : {
+            stepLabel: `Step ${roadmap.currentStepIndex + 1} of ${roadmap.steps.length}`,
+            title:
+              roadmap.steps[roadmap.currentStepIndex]?.title.replace(/^\d+\.\s*/, '') ?? "You're all caught up!",
+            progressLabel: roadmap.progressLabel,
+            progressPercent: roadmap.progressPercent,
+            ctaLabel: 'Continue Journey',
+            onPress: () => navigateToJourneyStep(roadmap.currentStepIndex),
+          };
+
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.centeredColumn} edges={['top']}>
@@ -25,15 +69,9 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}>
           <OfflineBanner />
 
-          <GreetingSection name="Thabo" grade="Grade 11" track="TVET Track" />
+          <GreetingSection learner={learner} />
 
-          <PrimaryActionCard
-            stepLabel="Step 3 of 6"
-            title="Explore Scarce Skills"
-            progressLabel="45% Complete"
-            progressPercent={45}
-            ctaLabel="Continue Journey"
-          />
+          <PrimaryActionCard {...primaryAction} />
 
           <QuizPromptCard />
 

@@ -20,12 +20,13 @@ import { TypingIndicator } from '@/components/ncap/typing-indicator';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { ChatMessage, SuggestedPrompt } from '@/data/ask-khetha';
 import { useAuth } from '@/contexts/auth-context';
+import { ChatMessage, SuggestedPrompt } from '@/data/ask-khetha';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
 import { ChatService } from '@/services/chat-service';
-import { Roadmap, RoadmapService } from '@/services/roadmap-service';
+import { navigateToJourneyStep } from '@/utils/journey-step-navigation';
 
 const CHAT_CARD_HEIGHT = 600;
 
@@ -40,8 +41,7 @@ export default function AskKhethaScreen() {
   const nextMessageId = useRef(0);
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [suggestedPrompts, setSuggestedPrompts] = useState<SuggestedPrompt[]>([]);
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
-  const [roadmapError, setRoadmapError] = useState<string | null>(null);
+  const { roadmap, roadmapError, retryRoadmap } = useRoadmap();
   const [inputText, setInputText] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -64,26 +64,6 @@ export default function AskKhethaScreen() {
       cancelled = true;
     };
   }, [loadAttempt]);
-
-  useEffect(() => {
-    if (!learner) return;
-    let cancelled = false;
-    RoadmapService.getRoadmap()
-      .then((result) => {
-        if (!cancelled) {
-          setRoadmap(result);
-          setRoadmapError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setRoadmapError(error instanceof ApiError ? error.message : 'Could not load your roadmap.');
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [learner]);
 
   function generateMessageId(suffix: string) {
     nextMessageId.current += 1;
@@ -322,15 +302,7 @@ export default function AskKhethaScreen() {
                     {roadmapError}
                   </ThemedText>
                   <Pressable
-                    onPress={() => {
-                      setRoadmapError(null);
-                      setRoadmap(null);
-                      RoadmapService.getRoadmap()
-                        .then(setRoadmap)
-                        .catch((error: unknown) =>
-                          setRoadmapError(error instanceof ApiError ? error.message : 'Could not load your roadmap.'),
-                        );
-                    }}
+                    onPress={retryRoadmap}
                     style={({ pressed }) => [
                       styles.roadmapSignInButton,
                       { backgroundColor: theme.primary },
@@ -372,7 +344,12 @@ export default function AskKhethaScreen() {
 
                   <View style={styles.roadmapSteps}>
                     {roadmap.steps.map((step, index) => (
-                      <RoadmapStepRow key={step.id} step={step} isLast={index === roadmap.steps.length - 1} />
+                      <RoadmapStepRow
+                        key={step.id}
+                        step={step}
+                        isLast={index === roadmap.steps.length - 1}
+                        onPress={() => navigateToJourneyStep(Number(step.id))}
+                      />
                     ))}
                   </View>
 

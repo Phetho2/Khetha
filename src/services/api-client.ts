@@ -54,4 +54,6 @@ export const apiClient = {
   get: <T>(path: string): Promise<T> => request<T>(path),
   post: <T>(path: string, body: unknown): Promise<T> =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  put: <T>(path: string, body: unknown): Promise<T> =>
+    request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
 };

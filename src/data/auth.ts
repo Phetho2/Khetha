@@ -12,6 +12,15 @@ export type LoginRequest = {
   password: string;
 };
 
+export type UpdateLearnerProfileRequest = {
+  name: string;
+  grade?: number;
+  language: string;
+  track: string;
+  latitude?: number;
+  longitude?: number;
+};
+
 export type LearnerProfile = {
   id: string;
   name: string | null;
@@ -30,5 +39,17 @@ export type AuthResponse = {
   learner: LearnerProfile;
 };
 
-export const LANGUAGE_OPTIONS = ['English', 'isiZulu', 'Sesotho', 'Afrikaans'];
+export const LANGUAGE_OPTIONS = [
+  'English',
+  'Afrikaans',
+  'isiZulu',
+  'isiXhosa',
+  'Sepedi',
+  'Setswana',
+  'Sesotho',
+  'Xitsonga',
+  'siSwati',
+  'Tshivenda',
+  'isiNdebele',
+];
 export const TRACK_OPTIONS = ['TVET Track', 'University Track', 'Undecided'];

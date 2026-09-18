@@ -1,10 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AssessmentFooterNote } from '@/components/ncap/assessment-footer-note';
-import { AssessmentNavControls } from '@/components/ncap/assessment-nav-controls';
 import { AssessmentProgress } from '@/components/ncap/assessment-progress';
 import { AssessmentQuestionCard } from '@/components/ncap/assessment-question-card';
 import { AssessmentRatingScale } from '@/components/ncap/assessment-rating-scale';
@@ -24,6 +25,8 @@ import { ApiError } from '@/services/api-client';
 import { AssessmentService } from '@/services/assessment-service';
 import { RoadmapService } from '@/services/roadmap-service';
 
+const AUTO_ADVANCE_DELAY_MS = 400;
+
 export default function CareerJobFitScreen() {
   const theme = useTheme();
   const { learner } = useAuth();
@@ -35,6 +38,7 @@ export default function CareerJobFitScreen() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const advanceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,19 +57,32 @@ export default function CareerJobFitScreen() {
     };
   }, [loadAttempt]);
 
+  useEffect(() => {
+    return () => {
+      if (advanceTimeout.current) clearTimeout(advanceTimeout.current);
+    };
+  }, []);
+
+  function clearPendingAdvance() {
+    if (advanceTimeout.current) {
+      clearTimeout(advanceTimeout.current);
+      advanceTimeout.current = null;
+    }
+  }
+
   function handleRetake() {
+    clearPendingAdvance();
     setCurrentIndex(0);
     setAnswers({});
     setResult(null);
     setSubmitError(null);
   }
 
-  function handleSubmit() {
-    if (!questions) return;
+  function submitAnswers(finalAnswers: Record<number, number>) {
     setIsSubmitting(true);
     setSubmitError(null);
     AssessmentService.submitAnswers(
-      Object.entries(answers).map(([questionId, rating]) => ({ questionId: Number(questionId), rating })),
+      Object.entries(finalAnswers).map(([questionId, rating]) => ({ questionId: Number(questionId), rating })),
     )
       .then((data) => {
         setResult(data);
@@ -78,6 +95,27 @@ export default function CareerJobFitScreen() {
         setSubmitError(error instanceof ApiError ? error.message : 'Something went wrong submitting your answers.');
       })
       .finally(() => setIsSubmitting(false));
+  }
+
+  function handleRate(questionId: number, rating: number, isLastQuestion: boolean, total: number) {
+    Haptics.selectionAsync();
+    const updatedAnswers = { ...answers, [questionId]: rating };
+    setAnswers(updatedAnswers);
+
+    clearPendingAdvance();
+    advanceTimeout.current = setTimeout(() => {
+      advanceTimeout.current = null;
+      if (isLastQuestion) {
+        submitAnswers(updatedAnswers);
+      } else {
+        setCurrentIndex((index) => Math.min(total - 1, index + 1));
+      }
+    }, AUTO_ADVANCE_DELAY_MS);
+  }
+
+  function goToPrevious() {
+    clearPendingAdvance();
+    setCurrentIndex((index) => Math.max(0, index - 1));
   }
 
   if (loadError) {
@@ -147,6 +185,8 @@ export default function CareerJobFitScreen() {
                 <ThemedText type="smallBold">Retake Assessment</ThemedText>
               </Pressable>
             </>
+          ) : isSubmitting ? (
+            <ScreenLoading label="Calculating your results..." />
           ) : (
             <>
               <AssessmentProgress
@@ -155,34 +195,35 @@ export default function CareerJobFitScreen() {
                 minutesRemaining={minutesRemaining}
               />
 
-              <AssessmentSectionBar sectionLabel={`${RIASEC_LABELS[question.type]} Questions`} />
+              <Animated.View key={question.id} entering={FadeIn.duration(200)} style={styles.questionGroup}>
+                <AssessmentSectionBar sectionLabel={`${RIASEC_LABELS[question.type]} Questions`} />
 
-              <AssessmentQuestionCard categoryEyebrow={RIASEC_LABELS[question.type]} questionText={question.text} />
+                <AssessmentQuestionCard categoryEyebrow={RIASEC_LABELS[question.type]} questionText={question.text} />
 
-              <AssessmentRatingScale
-                value={currentRating}
-                onChange={(rating) => setAnswers((current) => ({ ...current, [question.id]: rating }))}
-              />
+                <AssessmentRatingScale
+                  value={currentRating}
+                  onChange={(rating) => handleRate(question.id, rating, isLastQuestion, questions.length)}
+                />
+              </Animated.View>
 
               {submitError && (
-                <ThemedText type="small" themeColor="secondary" style={styles.submitError}>
+                <ThemedText type="small" themeColor="error" style={styles.submitError}>
                   {submitError}
                 </ThemedText>
               )}
 
-              <AssessmentNavControls
-                canGoPrevious={currentIndex > 0}
-                onPrevious={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-                onNext={() => {
-                  if (isLastQuestion) {
-                    handleSubmit();
-                  } else {
-                    setCurrentIndex((index) => Math.min(questions.length - 1, index + 1));
-                  }
-                }}
-                nextDisabled={currentRating === null || isSubmitting}
-                nextLabel={isSubmitting ? 'Submitting...' : isLastQuestion ? 'See My Results' : 'Next Question'}
-              />
+              {currentIndex > 0 && (
+                <Pressable
+                  onPress={goToPrevious}
+                  style={({ pressed }) => [
+                    styles.previousButton,
+                    { backgroundColor: theme.surfaceContainer },
+                    pressed && styles.pressed,
+                  ]}>
+                  <MaterialIcons name="arrow-back" size={18} color={theme.onSurface} />
+                  <ThemedText type="smallBold">Previous</ThemedText>
+                </Pressable>
+              )}
             </>
           )}
 
@@ -212,6 +253,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.one,
     paddingBottom: BottomTabInset + Spacing.four,
   },
+  questionGroup: {
+    gap: Spacing.four,
+  },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
@@ -237,6 +281,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.one,
     height: 48,
+    borderRadius: Radius.lg,
+  },
+  previousButton: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: Spacing.one,
+    height: 44,
+    paddingHorizontal: Spacing.three,
     borderRadius: Radius.lg,
   },
   submitError: {

@@ -1,12 +1,74 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  Keyframe,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const SPLASH_BACKGROUND = '#FAFCFB';
+const DISPLAY_DURATION = 1800;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
+const DOT_DELAYS = [0, 120, 240];
+
+function LoadingDot({ delay }: { delay: number }) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.set(
+      withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: 350, easing: EASE_IN_OUT }),
+            withTiming(0, { duration: 350, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          false,
+        ),
+      ),
+    );
+  }, [delay, progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.35 + progress.get() * 0.65,
+    transform: [{ translateY: -3 * progress.get() }],
+  }));
+
+  return <Animated.View style={[styles.dot, style]} />;
+}
+
+function LoadingDots() {
+  return (
+    <View style={styles.dotsRow}>
+      {DOT_DELAYS.map((delay) => (
+        <LoadingDot key={delay} delay={delay} />
+      ))}
+    </View>
+  );
+}
+
+const splashKeyframe = new Keyframe({
+  0: {
+    opacity: 1,
+  },
+  75: {
+    opacity: 1,
+  },
+  100: {
+    opacity: 0,
+    easing: EASE_OUT,
+  },
+});
 
 export function AnimatedSplashOverlay() {
   const [animate, setAnimate] = useState(false);
@@ -14,37 +76,27 @@ export function AnimatedSplashOverlay() {
 
   if (!visible) return null;
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: 1 }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
-
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const content = (
+    <View style={styles.content}>
+      <Image
+        style={styles.logo}
+        source={require('@/assets/images/khetha-splash-logo.png')}
+        contentFit="contain"
+      />
+      <LoadingDots />
+    </View>
+  );
 
   return animate ? (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
+      entering={splashKeyframe.duration(DISPLAY_DURATION).withCallback((finished) => {
         'worklet';
         if (finished) {
           scheduleOnRN(setVisible, false);
         }
       })}
-      style={styles.splashOverlay}>
-      {image}
+      style={[styles.splashOverlay, { backgroundColor: SPLASH_BACKGROUND }]}>
+      {content}
     </Animated.View>
   ) : (
     <View
@@ -53,96 +105,35 @@ export function AnimatedSplashOverlay() {
           setAnimate(true);
         });
       }}
-      style={styles.splashOverlay}>
-      {image}
-    </View>
-  );
-}
-
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
-export function AnimatedIcon() {
-  return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
+      style={[styles.splashOverlay, { backgroundColor: SPLASH_BACKGROUND }]}>
+      {content}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-    zIndex: 100,
-  },
-  image: {
-    width: 76,
-    height: 71,
-  },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
+  },
+  content: {
+    alignItems: 'center',
+    gap: 28,
+  },
+  logo: {
+    width: 240,
+    height: 127,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1b6b51',
   },
 });

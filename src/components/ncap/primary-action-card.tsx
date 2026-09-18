@@ -11,6 +11,7 @@ type PrimaryActionCardProps = {
   progressLabel: string;
   progressPercent: number;
   ctaLabel: string;
+  onPress: () => void;
 };
 
 export function PrimaryActionCard({
@@ -19,6 +20,7 @@ export function PrimaryActionCard({
   progressLabel,
   progressPercent,
   ctaLabel,
+  onPress,
 }: PrimaryActionCardProps) {
   const theme = useTheme();
 
@@ -51,6 +53,7 @@ export function PrimaryActionCard({
       </View>
 
       <Pressable
+        onPress={onPress}
         style={({ pressed }) => [
           styles.cta,
           { backgroundColor: theme.surfaceContainerLowest },

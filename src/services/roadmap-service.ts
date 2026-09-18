@@ -7,6 +7,7 @@ export type Roadmap = {
   steps: RoadmapStep[];
   progressPercent: number;
   progressLabel: string;
+  currentStepIndex: number;
 };
 
 function toRoadmap(response: JourneyProgressResponse): Roadmap {
@@ -36,7 +37,12 @@ function toRoadmap(response: JourneyProgressResponse): Roadmap {
   const completedCount = completions.filter((value) => value != null).length;
   const progressPercent = Math.round((completedCount / completions.length) * 100);
 
-  return { steps, progressPercent, progressLabel: `${progressPercent}% Complete` };
+  return {
+    steps,
+    progressPercent,
+    progressLabel: `${progressPercent}% Complete`,
+    currentStepIndex: response.currentStep,
+  };
 }
 
 export const RoadmapService = {

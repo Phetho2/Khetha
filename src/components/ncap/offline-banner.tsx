@@ -1,35 +1,53 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { SavedCareersService } from '@/services/saved-careers-service';
 
 export function OfflineBanner() {
   const theme = useTheme();
+  const { learner } = useAuth();
+  const [savedCount, setSavedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!learner) return;
+    let cancelled = false;
+    SavedCareersService.getSavedCareers()
+      .then((saved) => {
+        if (!cancelled) setSavedCount(saved.length);
+      })
+      .catch(() => {
+        // Best-effort — the banner just doesn't render without a learner or a count.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [learner]);
+
+  if (!learner || savedCount === null) return null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surfaceContainerLow }]}>
       <View style={styles.info}>
         <View style={[styles.iconCircle, { backgroundColor: theme.secondaryContainer }]}>
-          <MaterialIcons
-            name="signal-cellular-connected-no-internet-4-bar"
-            size={16}
-            color={theme.onSecondaryContainer}
-          />
+          <MaterialIcons name="bookmark" size={16} color={theme.onSecondaryContainer} />
         </View>
         <View style={styles.textColumn}>
           <ThemedText type="smallBold" themeColor="secondary">
-            Data-Free Mode Active
+            {savedCount} Saved Career{savedCount === 1 ? '' : 's'}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            14 saved careers &amp; tools offline ready
+            Synced to your Khetha account
           </ThemedText>
         </View>
       </View>
       <View style={[styles.syncPill, { backgroundColor: theme.surfaceContainerHighest }]}>
         <ThemedText type="smallBold" themeColor="primary">
-          Auto-syncs
+          Synced
         </ThemedText>
       </View>
     </View>
