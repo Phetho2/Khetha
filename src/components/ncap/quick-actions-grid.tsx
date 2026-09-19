@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
+import { Href, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { SchoolStatus, SubjectPlanStorage } from '@/services/subject-plan-storage';
 
 type QuickAction = {
   id: string;
@@ -31,17 +33,18 @@ const ACTIONS: QuickAction[] = [
     icon: 'psychology',
     iconBackground: 'secondaryContainer',
     iconColor: 'onSecondaryContainer',
-    title: 'Job Fit Finder',
+    title: 'Career Fit Finder',
     subtitle: 'Strengths & values',
     href: '/career-job-fit',
   },
   {
-    id: 'occupations-directory',
-    icon: 'local-fire-department',
+    id: 'careers-directory',
+    icon: 'work',
     iconBackground: 'tertiaryContainer',
     iconColor: 'onTertiaryContainer',
-    title: 'High Demand',
-    subtitle: 'National scarce skills',
+    title: 'Careers',
+    subtitle: 'Browse the full directory',
+    href: '/careers-directory',
   },
   {
     id: 'ask-khetha',
@@ -54,9 +57,28 @@ const ACTIONS: QuickAction[] = [
   },
 ];
 
+const REPORT_CARD_ACTION: QuickAction = {
+  id: 'term-results',
+  icon: 'fact-check',
+  iconBackground: 'primaryContainer',
+  iconColor: 'onPrimaryContainer',
+  title: 'Report Card',
+  subtitle: 'Term marks & progress',
+  href: '/term-results',
+};
+
 export function QuickActionsGrid() {
   const theme = useTheme();
   const router = useRouter();
+  const [schoolStatus, setSchoolStatus] = useState<SchoolStatus | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      SubjectPlanStorage.getSchoolStatus().then(setSchoolStatus);
+    }, []),
+  );
+
+  const actions = schoolStatus === 'in-school' ? [REPORT_CARD_ACTION, ...ACTIONS] : ACTIONS;
 
   return (
     <View style={styles.section}>
@@ -70,7 +92,7 @@ export function QuickActionsGrid() {
       </View>
 
       <View style={styles.grid}>
-        {ACTIONS.map((action) => (
+        {actions.map((action) => (
           <Pressable
             key={action.id}
             onPress={() =>

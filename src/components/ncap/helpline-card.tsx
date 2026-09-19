@@ -1,4 +1,3 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -14,12 +13,9 @@ export function HelplineCard() {
   return (
     <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.cardBorder }]}>
       <View style={styles.topRow}>
-        <View style={styles.liveIndicator}>
-          <MaterialIcons name="support-agent" size={16} color={theme.primary} />
-          <ThemedText type="smallBold" themeColor="primary" style={styles.liveLabel}>
-            Official DHET Helpline
-          </ThemedText>
-        </View>
+        <ThemedText type="smallBold" themeColor="primary" style={styles.liveLabel}>
+          Official DHET Helpline
+        </ThemedText>
         <ThemedText type="smallBold" themeColor="secondary">
           Toll-Free in SA
         </ThemedText>
@@ -29,7 +25,6 @@ export function HelplineCard() {
         <Pressable
           onPress={() => Linking.openURL(`tel:${HELPLINE_NUMBER}`)}
           style={({ pressed }) => [styles.callButton, { backgroundColor: theme.primary }, pressed && styles.pressed]}>
-          <MaterialIcons name="call" size={20} color={theme.onPrimary} />
           <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
             {HELPLINE_DISPLAY}
           </ThemedText>
@@ -40,7 +35,6 @@ export function HelplineCard() {
             { backgroundColor: theme.surfaceContainerHigh },
             pressed && styles.pressed,
           ]}>
-          <MaterialIcons name="chat" size={20} color={theme.secondary} />
           <ThemedText type="smallBold">WhatsApp Advisor</ThemedText>
         </Pressable>
       </View>
@@ -63,11 +57,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
   },
   liveLabel: {
     letterSpacing: 0.4,

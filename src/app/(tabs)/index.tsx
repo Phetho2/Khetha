@@ -2,19 +2,21 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DeadlineBanner } from '@/components/ncap/deadline-banner';
+import { DeadlineCarousel } from '@/components/ncap/deadline-carousel';
 import { GreetingSection } from '@/components/ncap/greeting-section';
-import { HelplineCard } from '@/components/ncap/helpline-card';
 import { OfflineBanner } from '@/components/ncap/offline-banner';
 import { PrimaryActionCard } from '@/components/ncap/primary-action-card';
 import { QuickActionsGrid } from '@/components/ncap/quick-actions-grid';
 import { QuizPromptCard } from '@/components/ncap/quiz-prompt-card';
+import { QuoteCarousel } from '@/components/ncap/quote-carousel';
 import { RecommendedCareersCarousel } from '@/components/ncap/recommended-careers-carousel';
 import { TopNavBar } from '@/components/ncap/top-nav-bar';
+import { VideosForYouCarousel } from '@/components/ncap/videos-for-you-carousel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { UPCOMING_DEADLINES } from '@/data/deadlines';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { navigateToJourneyStep } from '@/utils/journey-step-navigation';
 
@@ -75,21 +77,19 @@ export default function HomeScreen() {
 
           <QuizPromptCard />
 
+          <QuoteCarousel />
+
           <QuickActionsGrid />
 
           <RecommendedCareersCarousel />
 
+          <VideosForYouCarousel />
+
           <View style={styles.deadlinesSection}>
             <ThemedText type="subtitle" style={styles.deadlinesTitle}>
-              Upcoming Deadlines &amp; Support
+              Upcoming Deadlines
             </ThemedText>
-            <DeadlineBanner
-              eyebrow="BURSARY MILESTONE"
-              daysLeftLabel="18 Days Left"
-              title="NSFAS 2026 Window Opens"
-              description="Gather your ID document, parent/guardian consent affidavit, and matric mark statements early."
-            />
-            <HelplineCard />
+            <DeadlineCarousel deadlines={UPCOMING_DEADLINES} />
           </View>
         </ScrollView>
       </SafeAreaView>

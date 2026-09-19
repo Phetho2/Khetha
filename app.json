@@ -33,7 +33,14 @@
           "imageWidth": 240
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Khetha uses your calendar to add report-card reminders each term."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

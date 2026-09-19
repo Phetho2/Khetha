@@ -12,7 +12,6 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdvisorMessage } from '@/components/ncap/advisor-message';
-import { DhetGuidanceCard } from '@/components/ncap/dhet-guidance-card';
 import { RoadmapStepRow } from '@/components/ncap/roadmap-step-row';
 import { ScreenLoading } from '@/components/ncap/screen-loading';
 import { TopNavBar } from '@/components/ncap/top-nav-bar';
@@ -367,8 +366,6 @@ export default function AskKhethaScreen() {
                 </>
               )}
             </View>
-
-            <DhetGuidanceCard />
           </ScrollView>
         )}
       </SafeAreaView>

@@ -4,6 +4,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { RiasecMeta } from '@/data/assessment-questions';
+import { useTheme } from '@/hooks/use-theme';
+
+const HOW_IT_WORKS = [
+  { icon: 'touch-app', text: 'Rate each statement from Strongly Disagree to Strongly Agree — go with your gut.' },
+  { icon: 'check-circle-outline', text: 'There are no right or wrong answers.' },
+  { icon: 'view-agenda', text: '6 short sections, about 5 minutes in total.' },
+  { icon: 'insights', text: 'Your results power the career matches you see across Khetha.' },
+] as const;
 
 type AssessmentChapterIntroProps = {
   chapterNumber: number;
@@ -22,8 +30,35 @@ export function AssessmentChapterIntro({
   isFirst,
   onStart,
 }: AssessmentChapterIntroProps) {
+  const theme = useTheme();
+
   return (
     <View style={styles.container}>
+      {isFirst && (
+        <View style={[styles.instructionsCard, { backgroundColor: theme.surfaceContainerLow }]}>
+          <View style={styles.instructionsHeader}>
+            <MaterialIcons name="quiz" size={18} color={theme.primary} />
+            <ThemedText type="smallBold" themeColor="primary">
+              What Is This Test?
+            </ThemedText>
+          </View>
+          <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.instructionsIntro}>
+            This is the Holland Code (RIASEC) career interest quiz, used by DHET&apos;s National Career Advice
+            Portal to match your natural strengths to real careers and qualifications.
+          </ThemedText>
+          <View style={styles.instructionsList}>
+            {HOW_IT_WORKS.map((item) => (
+              <View key={item.text} style={styles.instructionRow}>
+                <MaterialIcons name={item.icon} size={16} color={theme.onSurfaceVariant} />
+                <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.instructionText}>
+                  {item.text}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {!isFirst && (
         <View style={styles.celebrateRow}>
           <MaterialIcons name="celebration" size={16} color={meta.color} />
@@ -68,6 +103,33 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingVertical: Spacing.six,
     paddingHorizontal: Spacing.three,
+  },
+  instructionsCard: {
+    alignSelf: 'stretch',
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    marginBottom: Spacing.four,
+  },
+  instructionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  instructionsIntro: {
+    lineHeight: 19,
+  },
+  instructionsList: {
+    gap: Spacing.one,
+  },
+  instructionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.one,
+  },
+  instructionText: {
+    flex: 1,
+    lineHeight: 18,
   },
   celebrateRow: {
     flexDirection: 'row',

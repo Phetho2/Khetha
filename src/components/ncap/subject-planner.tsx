@@ -9,6 +9,7 @@ import { ApsCalculationResult, CareersUnlockedResult, LearnerSubjectScore, Subje
 import { JOURNEY_STEP } from '@/data/journey';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
+import { PushNotificationsService } from '@/services/push-notifications-service';
 import { RoadmapService } from '@/services/roadmap-service';
 import { SchoolStatus, SubjectPlanStorage } from '@/services/subject-plan-storage';
 import { SubjectsService } from '@/services/subjects-service';
@@ -69,6 +70,10 @@ export function SubjectPlanner({ onContinue, continueLabel = 'Continue' }: Subje
   function selectSchoolStatus(status: SchoolStatus) {
     setSchoolStatus(status);
     SubjectPlanStorage.setSchoolStatus(status);
+    if (status === 'in-school') {
+      // Best-effort — a permission prompt or registration failure shouldn't block this screen.
+      PushNotificationsService.registerDevice().catch(() => {});
+    }
   }
 
   function toggleSubject(name: string) {
@@ -226,7 +231,7 @@ export function SubjectPlanner({ onContinue, continueLabel = 'Continue' }: Subje
         </View>
       )}
 
-      {unlockedResult && <UnlockedCareersPanel result={unlockedResult} />}
+      {unlockedResult && <UnlockedCareersPanel result={unlockedResult} learnerAps={apsResult?.totalAps ?? null} />}
 
       {onContinue && (
         <Pressable

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useThemePreference } from '@/contexts/theme-context';
 import { useTheme } from '@/hooks/use-theme';
 
 type PrimaryActionCardProps = {
@@ -23,13 +24,17 @@ export function PrimaryActionCard({
   onPress,
 }: PrimaryActionCardProps) {
   const theme = useTheme();
+  const { scheme } = useThemePreference();
+  // theme.onPrimary pairs with `primary`, not `primaryContainer` — in dark mode
+  // that leaves these two low-contrast against this card's dark green background.
+  const emphasisColor = scheme === 'dark' ? '#ffffff' : theme.onPrimary;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.primaryContainer }]}>
       <ThemedText type="smallBold" style={[styles.stepLabel, { color: theme.onPrimaryContainer }]}>
         {stepLabel.toUpperCase()}
       </ThemedText>
-      <ThemedText type="subtitle" style={[styles.title, { color: theme.onPrimary }]}>
+      <ThemedText type="subtitle" style={[styles.title, { color: emphasisColor }]}>
         {title}
       </ThemedText>
 
@@ -38,7 +43,7 @@ export function PrimaryActionCard({
           <ThemedText type="small" style={{ color: theme.onPrimaryContainer }}>
             Career roadmap progress
           </ThemedText>
-          <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
+          <ThemedText type="smallBold" style={{ color: emphasisColor }}>
             {progressLabel}
           </ThemedText>
         </View>

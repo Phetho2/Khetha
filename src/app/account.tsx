@@ -5,8 +5,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthForm } from '@/components/ncap/auth-form';
+import { HelplineCard } from '@/components/ncap/helpline-card';
 import { ScreenHeader } from '@/components/ncap/screen-header';
 import { ScreenLoading } from '@/components/ncap/screen-loading';
+import { ThemeToggleButton } from '@/components/ncap/theme-toggle-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -38,6 +40,7 @@ export default function AccountScreen() {
       <SafeAreaView style={styles.centeredColumn}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.closeRow}>
+            <ThemeToggleButton />
             <Pressable
               accessibilityLabel="Close"
               onPress={() => router.back()}
@@ -72,6 +75,8 @@ export default function AccountScreen() {
                   <ThemedText type="default">{learner.track}</ThemedText>
                 </View>
               </View>
+
+              <HelplineCard />
 
               <Pressable
                 onPress={handleLogout}
@@ -113,7 +118,9 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   closeRow: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   closeButton: {
     width: 36,

@@ -4,6 +4,7 @@ import { AuthResponse, LearnerProfile, LoginRequest, RegisterRequest, UpdateLear
 import { setAuthToken } from '@/services/api-client';
 import { AuthService } from '@/services/auth-service';
 import { AuthStorage } from '@/services/auth-storage';
+import { PushNotificationsService } from '@/services/push-notifications-service';
 
 type AuthContextValue = {
   learner: LearnerProfile | null;
@@ -60,6 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Best-effort, and must happen before the auth token is cleared — the
+    // unregister endpoint requires auth.
+    await PushNotificationsService.unregisterDevice().catch(() => {});
     setAuthToken(null);
     await AuthStorage.clearToken();
     setLearner(null);

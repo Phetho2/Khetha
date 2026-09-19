@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { CourseDetailInfo, CourseDetailModal } from '@/components/ncap/course-detail-modal';
@@ -14,27 +14,50 @@ import { UniversitiesService } from '@/services/universities-service';
 
 type UnlockedCareersPanelProps = {
   result: CareersUnlockedResult;
+  learnerAps: number | null;
 };
 
-export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
+export function UnlockedCareersPanel({ result, learnerAps }: UnlockedCareersPanelProps) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
   const [expandedFaculties, setExpandedFaculties] = useState<Set<string>>(new Set());
   const [courseDetails, setCourseDetails] = useState<Map<number, CourseDetailInfo>>(new Map());
   const [careers, setCareers] = useState<Career[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [selectedUniversity, setSelectedUniversity] = useState<string | null>(null);
 
-  const faculties = result.facultiesUnlocked ?? [];
-  const totalCourses = faculties.reduce((sum, group) => sum + (group.courses?.length ?? 0), 0);
+  const allFaculties = useMemo(() => result.facultiesUnlocked ?? [], [result.facultiesUnlocked]);
   const trimmedQuery = query.trim().toLowerCase();
   const isSearching = trimmedQuery.length > 0;
 
+  const universities = useMemo(() => {
+    const names = new Set<string>();
+    for (const group of allFaculties) {
+      for (const course of group.courses ?? []) {
+        if (course.university) names.add(course.university);
+      }
+    }
+    return Array.from(names).sort();
+  }, [allFaculties]);
+
+  const faculties = useMemo(() => {
+    if (!selectedUniversity) return allFaculties;
+    return allFaculties
+      .map((group) => ({
+        ...group,
+        courses: (group.courses ?? []).filter((course) => course.university === selectedUniversity),
+      }))
+      .filter((group) => (group.courses?.length ?? 0) > 0);
+  }, [allFaculties, selectedUniversity]);
+
+  const totalCourses = faculties.reduce((sum, group) => sum + (group.courses?.length ?? 0), 0);
+
   useEffect(() => {
-    if ((result.facultiesUnlocked?.length ?? 0) === 0) return;
+    if (allFaculties.length === 0) return;
     Promise.all([UniversitiesService.getUniversities(), CareersService.getCareers()])
-      .then(([universities, careerList]) => {
+      .then(([universityCatalog, careerList]) => {
         const details = new Map<number, CourseDetailInfo>();
-        for (const university of universities) {
+        for (const university of universityCatalog) {
           const websiteLink = university.prospectusUrl || university.website || undefined;
           for (const course of university.courses ?? []) {
             details.set(course.id, {
@@ -50,7 +73,7 @@ export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
       .catch(() => {
         // Best-effort — "More Info" just won't have anything to show if this fails.
       });
-  }, [result]);
+  }, [allFaculties]);
 
   const searchResults = isSearching
     ? faculties.flatMap((group) =>
@@ -78,19 +101,20 @@ export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
 
   return (
     <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.cardBorder }]}>
-      <View style={styles.headerRow}>
+      <View style={styles.headerColumn}>
         <ThemedText type="smallBold" themeColor="primary">
           Careers Unlocked By Your Subjects
         </ThemedText>
-        {faculties.length > 0 && (
-          <ThemedText type="small" themeColor="onSurfaceVariant">
+        {allFaculties.length > 0 && (
+          <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.headerMeta} numberOfLines={1}>
             {totalCourses} course{totalCourses === 1 ? '' : 's'} · {faculties.length} field
             {faculties.length === 1 ? '' : 's'}
+            {selectedUniversity ? ` at ${selectedUniversity}` : ''}
           </ThemedText>
         )}
       </View>
 
-      {faculties.length === 0 ? (
+      {allFaculties.length === 0 ? (
         <ThemedText type="small" themeColor="onSurfaceVariant">
           No matching courses found for this subject combination yet.
         </ThemedText>
@@ -112,6 +136,48 @@ export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
             )}
           </View>
 
+          {universities.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.universityFilterRow}>
+              <Pressable
+                onPress={() => setSelectedUniversity(null)}
+                style={[
+                  styles.universityChip,
+                  {
+                    backgroundColor: !selectedUniversity ? theme.primary : theme.surfaceContainerLow,
+                  },
+                ]}>
+                <ThemedText
+                  type="small"
+                  style={styles.universityChipLabel}
+                  themeColor={!selectedUniversity ? 'onPrimary' : 'onSurfaceVariant'}>
+                  All Universities
+                </ThemedText>
+              </Pressable>
+              {universities.map((university) => {
+                const selected = selectedUniversity === university;
+                return (
+                  <Pressable
+                    key={university}
+                    onPress={() => setSelectedUniversity(selected ? null : university)}
+                    style={[
+                      styles.universityChip,
+                      { backgroundColor: selected ? theme.primary : theme.surfaceContainerLow },
+                    ]}>
+                    <ThemedText
+                      type="small"
+                      style={styles.universityChipLabel}
+                      themeColor={selected ? 'onPrimary' : 'onSurfaceVariant'}>
+                      {university}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+
           {isSearching ? (
             searchResults.length === 0 ? (
               <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.centeredText}>
@@ -125,12 +191,18 @@ export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
                     course={course}
                     faculty={faculty}
                     hasDetail={courseDetails.has(course.courseId)}
+                    requiredAps={courseDetails.get(course.courseId)?.course.totalAPS}
+                    learnerAps={learnerAps}
                     onMoreInfo={() => setSelectedCourseId(course.courseId)}
                     theme={theme}
                   />
                 ))}
               </View>
             )
+          ) : faculties.length === 0 ? (
+            <ThemedText type="small" themeColor="onSurfaceVariant" style={styles.centeredText}>
+              No unlocked courses at {selectedUniversity} for this subject combination.
+            </ThemedText>
           ) : (
             <View style={styles.list}>
               {faculties.map((group) => {
@@ -161,6 +233,8 @@ export function UnlockedCareersPanel({ result }: UnlockedCareersPanelProps) {
                             key={course.courseId}
                             course={course}
                             hasDetail={courseDetails.has(course.courseId)}
+                            requiredAps={courseDetails.get(course.courseId)?.course.totalAPS}
+                            learnerAps={learnerAps}
                             onMoreInfo={() => setSelectedCourseId(course.courseId)}
                             theme={theme}
                           />
@@ -194,34 +268,64 @@ function CourseRow({
   course,
   faculty,
   hasDetail,
+  requiredAps,
+  learnerAps,
   onMoreInfo,
   theme,
 }: {
   course: UnlockedCourse;
   faculty?: string | null;
   hasDetail: boolean;
+  requiredAps?: number;
+  learnerAps: number | null;
   onMoreInfo: () => void;
   theme: ReturnType<typeof useTheme>;
 }) {
+  const qualifies = requiredAps !== undefined && learnerAps !== null && learnerAps >= requiredAps;
+
   return (
-    <View style={[styles.courseItem, { backgroundColor: theme.surfaceContainerLowest }]}>
-      <ThemedText type="small" style={styles.courseName} numberOfLines={2}>
+    <View
+      style={[
+        styles.courseItem,
+        { backgroundColor: qualifies ? theme.primaryContainer : theme.surfaceContainerLowest },
+        qualifies && { borderColor: theme.primary, borderWidth: 1 },
+      ]}>
+      {qualifies && (
+        <View style={styles.qualifiesRow}>
+          <MaterialIcons name="check-circle" size={13} color={theme.onPrimaryContainer} />
+          <ThemedText type="small" style={[styles.qualifiesLabel, { color: theme.onPrimaryContainer }]}>
+            You qualify — APS {requiredAps}+
+          </ThemedText>
+        </View>
+      )}
+      <ThemedText
+        type="small"
+        style={styles.courseName}
+        themeColor={qualifies ? 'onPrimaryContainer' : undefined}
+        numberOfLines={2}>
         {course.courseName}
       </ThemedText>
-      <ThemedText type="small" themeColor="onSurfaceVariant" numberOfLines={1}>
+      <ThemedText type="small" themeColor={qualifies ? 'onPrimaryContainer' : 'onSurfaceVariant'} numberOfLines={1}>
         {course.university}
       </ThemedText>
       {faculty && (
-        <ThemedText type="small" themeColor="outline" numberOfLines={1}>
+        <ThemedText type="small" themeColor={qualifies ? 'onPrimaryContainer' : 'outline'} numberOfLines={1}>
           {faculty}
         </ThemedText>
       )}
       {hasDetail && (
         <Pressable onPress={onMoreInfo} style={styles.moreInfoRow}>
-          <ThemedText type="small" themeColor="primary" style={styles.moreInfoLabel}>
+          <ThemedText
+            type="small"
+            themeColor={qualifies ? 'onPrimaryContainer' : 'primary'}
+            style={styles.moreInfoLabel}>
             More Info
           </ThemedText>
-          <MaterialIcons name="chevron-right" size={16} color={theme.primary} />
+          <MaterialIcons
+            name="chevron-right"
+            size={16}
+            color={qualifies ? theme.onPrimaryContainer : theme.primary}
+          />
         </Pressable>
       )}
     </View>
@@ -235,11 +339,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+  headerColumn: {
+    gap: 2,
+  },
+  headerMeta: {
+    marginTop: 1,
   },
   searchBox: {
     flexDirection: 'row',
@@ -254,9 +358,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     height: '100%',
   },
+  universityFilterRow: {
+    flexDirection: 'row',
+    gap: Spacing.one,
+    paddingVertical: 2,
+  },
+  universityChip: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.full,
+  },
+  universityChipLabel: {
+    fontWeight: '600',
+  },
   centeredText: {
     textAlign: 'center',
-    lineHeight: 18,
   },
   list: {
     gap: Spacing.one,
@@ -288,6 +404,17 @@ const styles = StyleSheet.create({
   },
   courseName: {
     fontWeight: '600',
+  },
+  qualifiesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  qualifiesLabel: {
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 0.2,
   },
   moreInfoRow: {
     flexDirection: 'row',

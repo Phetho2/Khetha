@@ -5,28 +5,37 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+type DeadlineTone = 'funding' | 'deadline';
+
 type DeadlineBannerProps = {
   eyebrow: string;
   daysLeftLabel: string;
   title: string;
   description: string;
+  tone?: DeadlineTone;
 };
 
-export function DeadlineBanner({ eyebrow, daysLeftLabel, title, description }: DeadlineBannerProps) {
+export function DeadlineBanner({ eyebrow, daysLeftLabel, title, description, tone = 'deadline' }: DeadlineBannerProps) {
   const theme = useTheme();
+  // Funding (e.g. NSFAS) reads as money/teal, so it doesn't get mistaken for an
+  // application closing date — those stay on the amber "deadline" tone.
+  const container = tone === 'funding' ? theme.secondaryContainer : theme.tertiaryContainer;
+  const onContainer = tone === 'funding' ? theme.onSecondaryContainer : theme.onTertiaryContainer;
+  const accent = tone === 'funding' ? theme.secondary : theme.tertiary;
+  const icon = tone === 'funding' ? 'savings' : 'event';
 
   return (
     <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.cardBorder }]}>
-      <View style={[styles.iconCircle, { backgroundColor: theme.tertiaryContainer }]}>
-        <MaterialIcons name="event" size={20} color={theme.onTertiaryContainer} />
+      <View style={[styles.iconCircle, { backgroundColor: container }]}>
+        <MaterialIcons name={icon} size={20} color={onContainer} />
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <ThemedText type="smallBold" themeColor="tertiary" style={styles.eyebrow}>
+          <ThemedText type="smallBold" style={[styles.eyebrow, { color: accent }]}>
             {eyebrow}
           </ThemedText>
-          <View style={[styles.daysPill, { backgroundColor: theme.tertiaryContainer }]}>
-            <ThemedText type="smallBold" themeColor="onTertiaryContainer">
+          <View style={[styles.daysPill, { backgroundColor: container }]}>
+            <ThemedText type="smallBold" style={{ color: onContainer }}>
               {daysLeftLabel}
             </ThemedText>
           </View>

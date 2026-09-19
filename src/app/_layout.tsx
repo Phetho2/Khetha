@@ -1,10 +1,10 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider } from '@/contexts/auth-context';
 import { OnboardingProvider, useOnboarding } from '@/contexts/onboarding-context';
+import { ThemePreferenceProvider, useThemePreference } from '@/contexts/theme-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,7 +23,9 @@ function RootNavigator() {
       <Stack.Protected guard={hasSeenWelcome}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="career-detail" options={{ presentation: 'card' }} />
+        <Stack.Screen name="careers-directory" options={{ presentation: 'card' }} />
         <Stack.Screen name="shortlist" options={{ presentation: 'card' }} />
+        <Stack.Screen name="term-results" options={{ presentation: 'card' }} />
         <Stack.Screen name="account" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding-language" />
         <Stack.Screen name="onboarding-you-are" />
@@ -36,10 +38,10 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function ThemedApp() {
+  const { scheme } = useThemePreference();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <OnboardingProvider>
           <AnimatedSplashOverlay />
@@ -47,5 +49,13 @@ export default function RootLayout() {
         </OnboardingProvider>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <ThemedApp />
+    </ThemePreferenceProvider>
   );
 }

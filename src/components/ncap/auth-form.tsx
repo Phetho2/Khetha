@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -7,6 +8,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { LANGUAGE_OPTIONS, TRACK_OPTIONS } from '@/data/auth';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
+import { PushNotificationsService } from '@/services/push-notifications-service';
+import { SchoolStatus, SubjectPlanStorage } from '@/services/subject-plan-storage';
 
 type Mode = 'login' | 'register';
 
@@ -20,6 +23,7 @@ export function AuthForm({ onSuccess }: { onSuccess: (mode: Mode) => void }) {
   const [grade, setGrade] = useState('');
   const [language, setLanguage] = useState(LANGUAGE_OPTIONS[0]);
   const [track, setTrack] = useState(TRACK_OPTIONS[0]);
+  const [schoolStatus, setSchoolStatus] = useState<SchoolStatus | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +31,10 @@ export function AuthForm({ onSuccess }: { onSuccess: (mode: Mode) => void }) {
     setError(null);
 
     if (mode === 'register') {
+      if (!schoolStatus) {
+        setError("Please tell us whether you're still a learner or a school leaver.");
+        return;
+      }
       const gradeNumber = Number(grade);
       if (!grade || gradeNumber < 8 || gradeNumber > 12) {
         setError('Please enter a grade between 8 and 12.');
@@ -49,7 +57,17 @@ export function AuthForm({ onSuccess }: { onSuccess: (mode: Mode) => void }) {
           });
 
     promise
-      .then(() => onSuccess(mode))
+      .then(async () => {
+        if (mode === 'register' && schoolStatus) {
+          await SubjectPlanStorage.setSchoolStatus(schoolStatus);
+        }
+        const currentStatus = mode === 'register' ? schoolStatus : await SubjectPlanStorage.getSchoolStatus();
+        if (currentStatus === 'in-school') {
+          // Best-effort — a permission prompt or registration failure shouldn't block sign-in.
+          PushNotificationsService.registerDevice().catch(() => {});
+        }
+        onSuccess(mode);
+      })
       .catch((err: unknown) => {
         setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
       })
@@ -58,32 +76,60 @@ export function AuthForm({ onSuccess }: { onSuccess: (mode: Mode) => void }) {
 
   return (
     <>
-      <View style={styles.modeSwitch}>
-        <Pressable
-          onPress={() => setMode('login')}
-          style={[styles.modeTab, mode === 'login' && { backgroundColor: theme.primary }]}>
-          <ThemedText type="smallBold" style={{ color: mode === 'login' ? theme.onPrimary : theme.onSurface }}>
-            Log In
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={() => setMode('register')}
-          style={[styles.modeTab, mode === 'register' && { backgroundColor: theme.primary }]}>
-          <ThemedText type="smallBold" style={{ color: mode === 'register' ? theme.onPrimary : theme.onSurface }}>
-            Register
-          </ThemedText>
-        </Pressable>
-      </View>
-
       <View style={styles.form}>
         {mode === 'register' && (
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Full name"
-            placeholderTextColor={theme.onSurfaceVariant}
-            style={[styles.input, { color: theme.onSurface, backgroundColor: theme.surfaceContainerLow }]}
-          />
+          <>
+            <View style={styles.schoolStatusRow}>
+              <Pressable
+                onPress={() => setSchoolStatus('in-school')}
+                style={[
+                  styles.schoolStatusButton,
+                  {
+                    backgroundColor: schoolStatus === 'in-school' ? theme.primaryContainer : theme.surfaceContainerLow,
+                    borderColor: schoolStatus === 'in-school' ? theme.primary : theme.cardBorder,
+                  },
+                ]}>
+                <MaterialIcons
+                  name="school"
+                  size={22}
+                  color={schoolStatus === 'in-school' ? theme.onPrimaryContainer : theme.onSurfaceVariant}
+                />
+                <ThemedText
+                  type="smallBold"
+                  themeColor={schoolStatus === 'in-school' ? 'onPrimaryContainer' : 'onSurface'}>
+                  I&apos;m a Learner
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => setSchoolStatus('finished')}
+                style={[
+                  styles.schoolStatusButton,
+                  {
+                    backgroundColor: schoolStatus === 'finished' ? theme.primaryContainer : theme.surfaceContainerLow,
+                    borderColor: schoolStatus === 'finished' ? theme.primary : theme.cardBorder,
+                  },
+                ]}>
+                <MaterialIcons
+                  name="workspace-premium"
+                  size={22}
+                  color={schoolStatus === 'finished' ? theme.onPrimaryContainer : theme.onSurfaceVariant}
+                />
+                <ThemedText
+                  type="smallBold"
+                  themeColor={schoolStatus === 'finished' ? 'onPrimaryContainer' : 'onSurface'}>
+                  School Leaver
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Full name"
+              placeholderTextColor={theme.onSurfaceVariant}
+              style={[styles.input, { color: theme.onSurface, backgroundColor: theme.surfaceContainerLow }]}
+            />
+          </>
         )}
         <TextInput
           value={email}
@@ -167,6 +213,20 @@ export function AuthForm({ onSuccess }: { onSuccess: (mode: Mode) => void }) {
           {isSubmitting ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Create Account'}
         </ThemedText>
       </Pressable>
+
+      <Pressable
+        onPress={() => {
+          setError(null);
+          setMode((current) => (current === 'login' ? 'register' : 'login'));
+        }}
+        style={styles.switchModeRow}>
+        <ThemedText type="small" themeColor="onSurfaceVariant">
+          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+        </ThemedText>
+        <ThemedText type="smallBold" themeColor="primary">
+          {mode === 'login' ? 'Register' : 'Log In'}
+        </ThemedText>
+      </Pressable>
     </>
   );
 }
@@ -175,19 +235,20 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
   },
-  modeSwitch: {
-    flexDirection: 'row',
-    gap: Spacing.one,
-  },
-  modeTab: {
-    flex: 1,
-    height: 44,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   form: {
     gap: Spacing.two,
+  },
+  schoolStatusRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  schoolStatusButton: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
   },
   input: {
     height: 48,
@@ -213,5 +274,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  switchModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.one,
   },
 });
