@@ -1,66 +1,63 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { RecommendedCareer } from '@/data/recommended-careers';
+import { RIASEC_META } from '@/data/assessment-questions';
+import { MatchedCareer } from '@/data/careers';
 import { useTheme } from '@/hooks/use-theme';
 
 import { Badge } from './badge';
 
-export function CareerCard({ career }: { career: RecommendedCareer }) {
+export function CareerCard({ career, onExplore }: { career: MatchedCareer; onExplore: () => void }) {
   const theme = useTheme();
-  const router = useRouter();
+  const matchPercent = Math.round(career.overallScore * 100);
 
   return (
     <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.cardBorder }]}>
-      <View style={styles.imageWrapper}>
-        <Image source={{ uri: career.imageUrl }} style={styles.image} contentFit="cover" />
+      <View style={styles.headerRow}>
         <Badge
-          label={`${career.matchPercent}% Match`}
+          label={`${matchPercent}% Match`}
           backgroundColor={theme.primary}
           textColor={theme.onPrimary}
           icon={<MaterialIcons name="verified" size={13} color={theme.onPrimary} />}
-          style={styles.matchBadge}
         />
-      </View>
-
-      <View style={styles.tagRow}>
-        {career.tags.map((tag) => (
-          <Badge
-            key={tag.label}
-            label={tag.label}
-            backgroundColor={tag.tone === 'tertiary' ? theme.tertiaryContainer : theme.secondaryContainer}
-            textColor={tag.tone === 'tertiary' ? theme.onTertiaryContainer : theme.onSecondaryContainer}
-          />
-        ))}
-        <View style={[styles.qualificationPill, { backgroundColor: theme.surfaceContainerLow }]}>
-          <ThemedText type="smallBold" themeColor="secondary" style={styles.qualificationLabel}>
-            {career.qualification}
-          </ThemedText>
-        </View>
+        {career.riasecTags && career.riasecTags.length > 0 && (
+          <View style={styles.traitRow}>
+            {career.riasecTags.slice(0, 3).map((tag) => {
+              const meta = RIASEC_META[tag];
+              if (!meta) return null;
+              return (
+                <View key={tag} style={[styles.traitDot, { backgroundColor: meta.color }]}>
+                  <MaterialIcons name={meta.icon as never} size={11} color="#fff" />
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       <View style={styles.details}>
-        <ThemedText type="smallBold" style={styles.title}>
-          {career.title}
+        <ThemedText type="smallBold" style={styles.title} numberOfLines={2}>
+          {career.title ?? 'Untitled Career'}
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-          {career.description}
-        </ThemedText>
+        {career.summary && (
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={3}>
+            {career.summary}
+          </ThemedText>
+        )}
       </View>
 
       <View style={styles.footer}>
-        <View>
+        {career.ofoCode ? (
           <ThemedText type="small" themeColor="outline">
-            Starting Range
+            OFO {career.ofoCode}
           </ThemedText>
-          <ThemedText type="smallBold">{career.salaryRange}</ThemedText>
-        </View>
+        ) : (
+          <View />
+        )}
         <Pressable
-          onPress={() => router.push({ pathname: '/career-detail', params: { id: career.id } })}
+          onPress={onExplore}
           style={({ pressed }) => [
             styles.exploreButton,
             { backgroundColor: theme.surfaceContainerHigh },
@@ -84,37 +81,25 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  imageWrapper: {
-    width: '100%',
-    height: 128,
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  matchBadge: {
-    position: 'absolute',
-    top: Spacing.one,
-    left: Spacing.one,
-  },
-  tagRow: {
+  headerRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  qualificationPill: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
+  traitRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  traitDot: {
+    width: 20,
+    height: 20,
     borderRadius: Radius.full,
-  },
-  qualificationLabel: {
-    fontSize: 11,
-    lineHeight: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   details: {
     gap: 2,
+    minHeight: 78,
   },
   title: {
     fontSize: 15,
