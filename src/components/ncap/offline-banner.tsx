@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -31,7 +32,13 @@ export function OfflineBanner() {
   if (!learner || savedCount === null) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.surfaceContainerLow }]}>
+    <Pressable
+      onPress={() => router.push('/shortlist')}
+      style={({ pressed }) => [
+        styles.container,
+        { backgroundColor: theme.surfaceContainerLow },
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.info}>
         <View style={[styles.iconCircle, { backgroundColor: theme.secondaryContainer }]}>
           <MaterialIcons name="bookmark" size={16} color={theme.onSecondaryContainer} />
@@ -50,7 +57,7 @@ export function OfflineBanner() {
           Synced
         </ThemedText>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -84,5 +91,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 2,
     borderRadius: Radius.full,
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });

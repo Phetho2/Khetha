@@ -1,8 +1,7 @@
+import { Career } from '@/data/careers';
+
 export type SavedCareer = {
   id: string;
   savedAtUtc: string;
-  career: {
-    id: number;
-    title: string | null;
-  };
+  career: Career;
 };

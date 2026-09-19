@@ -47,6 +47,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new ApiError(body?.message ?? `Request failed with status ${response.status}`, response.status);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json();
 }
 
@@ -56,4 +60,5 @@ export const apiClient = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown): Promise<T> =>
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: <T>(path: string): Promise<T> => request<T>(path, { method: 'DELETE' }),
 };

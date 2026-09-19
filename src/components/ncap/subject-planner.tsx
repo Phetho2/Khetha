@@ -4,9 +4,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { ApsCalculationResult, CareersUnlockedResult, LearnerSubjectScore, Subject } from '@/data/subjects';
+import { JOURNEY_STEP } from '@/data/journey';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
+import { RoadmapService } from '@/services/roadmap-service';
 import { SchoolStatus, SubjectPlanStorage } from '@/services/subject-plan-storage';
 import { SubjectsService } from '@/services/subjects-service';
 
@@ -29,6 +32,7 @@ type SubjectPlannerProps = {
 
 export function SubjectPlanner({ onContinue, continueLabel = 'Continue' }: SubjectPlannerProps) {
   const theme = useTheme();
+  const { learner } = useAuth();
   const [catalog, setCatalog] = useState<Subject[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mySubjects, setMySubjects] = useState<LearnerSubjectScore[]>([]);
@@ -100,6 +104,10 @@ export function SubjectPlanner({ onContinue, continueLabel = 'Continue' }: Subje
       .then(([aps, unlocked]) => {
         setApsResult(aps);
         setUnlockedResult(unlocked);
+        if (learner) {
+          // Best-effort — a roadmap sync failure shouldn't disrupt the results just shown.
+          RoadmapService.completeStep(JOURNEY_STEP.explore).catch(() => {});
+        }
       })
       .catch((error: unknown) => {
         setCalculateError(error instanceof ApiError ? error.message : 'Could not calculate your APS right now.');

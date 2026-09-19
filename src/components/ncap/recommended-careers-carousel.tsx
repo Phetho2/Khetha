@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { MatchedCareer } from '@/data/careers';
+import { useSavedCareers } from '@/hooks/use-saved-careers';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/services/api-client';
 import { CareersService } from '@/services/careers-service';
@@ -20,6 +21,7 @@ type LoadState = 'loading' | 'ready' | 'needs-input' | 'error';
 export function RecommendedCareersCarousel() {
   const theme = useTheme();
   const { learner } = useAuth();
+  const { savedIds, toggleSaved } = useSavedCareers();
   const [state, setState] = useState<LoadState>('loading');
   const [careers, setCareers] = useState<MatchedCareer[]>([]);
   const [subtitle, setSubtitle] = useState('Top careers in our directory');
@@ -58,7 +60,7 @@ export function RecommendedCareersCarousel() {
             return result;
           })
           .filter((entry): entry is MatchedCareer => entry !== null)
-          .sort((a, b) => b.overallScore - a.overallScore);
+          .sort((a, b) => (b.overallScore ?? 0) - (a.overallScore ?? 0));
 
         if (merged.length === 0) {
           setState('needs-input');
@@ -136,12 +138,23 @@ export function RecommendedCareersCarousel() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.carouselContent}>
           {careers.map((career) => (
-            <CareerCard key={career.id} career={career} onExplore={() => setSelected(career)} />
+            <CareerCard
+              key={career.id}
+              career={career}
+              onExplore={() => setSelected(career)}
+              isSaved={savedIds.has(career.id)}
+              onToggleSave={() => toggleSaved(career.id)}
+            />
           ))}
         </ScrollView>
       )}
 
-      <CareerDetailModal career={selected} onClose={() => setSelected(null)} />
+      <CareerDetailModal
+        career={selected}
+        onClose={() => setSelected(null)}
+        isSaved={selected ? savedIds.has(selected.id) : false}
+        onToggleSave={() => (selected ? toggleSaved(selected.id) : Promise.resolve())}
+      />
     </View>
   );
 }

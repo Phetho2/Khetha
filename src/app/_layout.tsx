@@ -23,6 +23,7 @@ function RootNavigator() {
       <Stack.Protected guard={hasSeenWelcome}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="career-detail" options={{ presentation: 'card' }} />
+        <Stack.Screen name="shortlist" options={{ presentation: 'card' }} />
         <Stack.Screen name="account" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding-language" />
         <Stack.Screen name="onboarding-you-are" />

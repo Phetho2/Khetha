@@ -27,9 +27,10 @@ export type CareerMatchResponse = {
   notes: string | null;
 };
 
-// A matched career merged with its full directory record, for display.
+// A career merged with its match scores, for display. Scores are omitted
+// when there's no ranking context (e.g. viewing a career from the Shortlist).
 export type MatchedCareer = Career & {
-  overallScore: number;
-  subjectFitScore: number | null;
-  riasecFitScore: number | null;
+  overallScore?: number;
+  subjectFitScore?: number | null;
+  riasecFitScore?: number | null;
 };

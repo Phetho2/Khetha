@@ -1,8 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { RIASEC_META } from '@/data/assessment-questions';
 import { MatchedCareer } from '@/data/careers';
 import { useTheme } from '@/hooks/use-theme';
@@ -10,11 +12,22 @@ import { useTheme } from '@/hooks/use-theme';
 type CareerDetailModalProps = {
   career: MatchedCareer | null;
   onClose: () => void;
+  // The caller owns saved state (it needs it for its own card/list rendering
+  // too), so the modal is controlled rather than fetching its own copy.
+  isSaved: boolean;
+  onToggleSave: () => Promise<void>;
 };
 
-export function CareerDetailModal({ career, onClose }: CareerDetailModalProps) {
+export function CareerDetailModal({ career, onClose, isSaved, onToggleSave }: CareerDetailModalProps) {
   const theme = useTheme();
-  const matchPercent = career ? Math.round(career.overallScore * 100) : 0;
+  const { learner } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const matchPercent = career?.overallScore !== undefined ? Math.round(career.overallScore * 100) : null;
+
+  function handleToggleSave() {
+    setIsSaving(true);
+    onToggleSave().finally(() => setIsSaving(false));
+  }
 
   return (
     <Modal visible={career !== null} animationType="slide" transparent onRequestClose={onClose}>
@@ -28,12 +41,14 @@ export function CareerDetailModal({ career, onClose }: CareerDetailModalProps) {
           {career && (
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
               <View style={styles.header}>
-                <View style={[styles.matchPill, { backgroundColor: theme.primary }]}>
-                  <MaterialIcons name="verified" size={13} color={theme.onPrimary} />
-                  <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
-                    {matchPercent}% Match
-                  </ThemedText>
-                </View>
+                {matchPercent !== null && (
+                  <View style={[styles.matchPill, { backgroundColor: theme.primary }]}>
+                    <MaterialIcons name="verified" size={13} color={theme.onPrimary} />
+                    <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
+                      {matchPercent}% Match
+                    </ThemedText>
+                  </View>
+                )}
                 <ThemedText type="subtitle" style={styles.careerTitle}>
                   {career.title ?? 'Untitled Career'}
                 </ThemedText>
@@ -43,6 +58,32 @@ export function CareerDetailModal({ career, onClose }: CareerDetailModalProps) {
                   </ThemedText>
                 )}
               </View>
+
+              <Pressable
+                onPress={handleToggleSave}
+                disabled={isSaving}
+                style={({ pressed }) => [
+                  styles.saveButton,
+                  { backgroundColor: isSaved ? theme.secondaryContainer : theme.surfaceContainer },
+                  pressed && styles.pressed,
+                ]}>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={theme.onSurfaceVariant} />
+                ) : (
+                  <MaterialIcons
+                    name={isSaved ? 'bookmark' : 'bookmark-border'}
+                    size={18}
+                    color={isSaved ? theme.onSecondaryContainer : theme.onSurfaceVariant}
+                  />
+                )}
+                <ThemedText type="smallBold" themeColor={isSaved ? 'onSecondaryContainer' : 'onSurfaceVariant'}>
+                  {!learner
+                    ? 'Sign in to save'
+                    : isSaved
+                      ? 'Saved to Shortlist'
+                      : 'Save to Shortlist'}
+                </ThemedText>
+              </Pressable>
 
               {career.summary && (
                 <View style={styles.section}>
@@ -193,6 +234,15 @@ const styles = StyleSheet.create({
   careerTitle: {
     fontSize: 19,
     lineHeight: 25,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    height: 44,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.one,
   },
   section: {
     gap: Spacing.two,
